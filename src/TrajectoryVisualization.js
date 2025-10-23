@@ -55,7 +55,9 @@ export default function TrajectoryVisualization() {
       const uniqueModels = [...new Set(parsed.map(r => r.model))].filter(Boolean);
       const uniqueEnvs = [...new Set(parsed.map(r => r.env))].filter(Boolean);
       const uniqueLevels = [...new Set(parsed.map(r => r.level))].filter(Boolean);
-      const uniqueRunIds = [...new Set(parsed.map(r => r.run_id))].filter(Boolean).sort();
+      const uniqueRunIds = [...new Set(parsed.map(r => r.run_id))].filter(Boolean).sort((a, b) => {
+        return String(a).localeCompare(String(b));
+      });
       
       setModels(uniqueModels);
       setEnvs(uniqueEnvs);
@@ -86,36 +88,38 @@ export default function TrajectoryVisualization() {
     let filtered = [...allData];
     
     if (selectedModel !== 'all') {
-      filtered = filtered.filter(r => r.model === selectedModel);
+      filtered = filtered.filter(r => String(r.model) === String(selectedModel));
     }
     if (selectedEnv !== 'all') {
-      filtered = filtered.filter(r => r.env === selectedEnv);
+      filtered = filtered.filter(r => String(r.env) === String(selectedEnv));
     }
     if (selectedLevel !== 'all') {
-      filtered = filtered.filter(r => r.level === selectedLevel);
+      filtered = filtered.filter(r => String(r.level) === String(selectedLevel));
     }
     if (selectedRunId !== 'all') {
-      filtered = filtered.filter(r => r.run_id === selectedRunId);
+      filtered = filtered.filter(r => String(r.run_id) === String(selectedRunId));
     }
 
     const newAvailableModels = [...new Set(filtered.map(r => r.model))];
     const newAvailableEnvs = [...new Set(filtered.map(r => r.env))];
     const newAvailableLevels = [...new Set(filtered.map(r => r.level))];
-    const newAvailableRunIds = [...new Set(filtered.map(r => r.run_id))].sort();
+    const newAvailableRunIds = [...new Set(filtered.map(r => r.run_id))].sort((a, b) => {
+      return String(a).localeCompare(String(b));
+    });
 
-    if (selectedModel !== 'all' && !newAvailableModels.includes(selectedModel)) {
+    if (selectedModel !== 'all' && !newAvailableModels.some(m => String(m) === String(selectedModel))) {
       setSelectedModel('all');
       return;
     }
-    if (selectedEnv !== 'all' && !newAvailableEnvs.includes(selectedEnv)) {
+    if (selectedEnv !== 'all' && !newAvailableEnvs.some(e => String(e) === String(selectedEnv))) {
       setSelectedEnv('all');
       return;
     }
-    if (selectedLevel !== 'all' && !newAvailableLevels.includes(selectedLevel)) {
+    if (selectedLevel !== 'all' && !newAvailableLevels.some(l => String(l) === String(selectedLevel))) {
       setSelectedLevel('all');
       return;
     }
-    if (selectedRunId !== 'all' && !newAvailableRunIds.includes(selectedRunId)) {
+    if (selectedRunId !== 'all' && !newAvailableRunIds.some(id => String(id) === String(selectedRunId))) {
       setSelectedRunId('all');
       return;
     }
@@ -125,7 +129,24 @@ export default function TrajectoryVisualization() {
     setAvailableLevels(newAvailableLevels);
     setAvailableRunIds(newAvailableRunIds);
 
-    filtered.sort((a, b) => a.step - b.step);
+    const orderMap = {};
+    let idx = 0;
+    for (const r of allData) {
+      const key = `${r.model || ''}|||${r.env || ''}|||${r.level || ''}|||${r.run_id || ''}`;
+      if (!(key in orderMap)) orderMap[key] = idx++;
+    }
+
+    filtered.sort((a, b) => {
+      const keyA = `${a.model || ''}|||${a.env || ''}|||${a.level || ''}|||${a.run_id || ''}`;
+      const keyB = `${b.model || ''}|||${b.env || ''}|||${b.level || ''}|||${b.run_id || ''}`;
+
+      const groupCompare = (orderMap[keyA] || 0) - (orderMap[keyB] || 0);
+      if (groupCompare !== 0) return groupCompare;
+
+      return (Number(a.step) || 0) - (Number(b.step) || 0);
+    });
+;
+    
     setCurrentTrajectory(filtered);
     setCurrentStepIndex(0);
     setIsPlaying(false);
@@ -265,10 +286,10 @@ export default function TrajectoryVisualization() {
 
                 <div className="filter-group">
                   <label>Run ID</label>
-                  <select value={selectedRunId} onChange={(e) => setSelectedRunId(e.target.value)} className="filter-select">
+                  <select value={String(selectedRunId)} onChange={(e) => setSelectedRunId(e.target.value)} className="filter-select">
                     <option value="all">All Runs</option>
-                    {availableRunIds.map(id => (
-                      <option key={id} value={id}>{id}</option>
+                    {runIds.map(id => (
+                      <option key={id} value={String(id)}>{id}</option>
                     ))}
                   </select>
                 </div>
@@ -290,23 +311,23 @@ export default function TrajectoryVisualization() {
                   <div className="metadata-grid">
                     <div>
                       <div className="metadata-item-label">Model</div>
-                      <div className="metadata-item-value">{currentStep.model}</div>
+                      <div className="metadata-item-value">{currentStep.model || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="metadata-item-label">Environment</div>
-                      <div className="metadata-item-value">{currentStep.env}</div>
+                      <div className="metadata-item-value">{currentStep.env || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="metadata-item-label">Level</div>
-                      <div className="metadata-item-value">{currentStep.level}</div>
+                      <div className="metadata-item-value">{currentStep.level || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="metadata-item-label">Run ID</div>
-                      <div className="metadata-item-value">{currentStep.run_id}</div>
+                      <div className="metadata-item-value">{currentStep.run_id || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="metadata-item-label">Step</div>
-                      <div className="metadata-item-value">{currentStep.step}</div>
+                      <div className="metadata-item-value">{currentStep.step !== undefined ? currentStep.step : 'N/A'}</div>
                     </div>
                   </div>
                 </div>
